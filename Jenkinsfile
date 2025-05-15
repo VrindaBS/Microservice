@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_USER = 'vrindabs'  // ✅ Change if your DockerHub username is different
-        DOCKER_CREDENTIALS_ID = 'docker-cred'  // ✅ Matches your actual Jenkins credentials ID
+        DOCKERHUB_USER = 'vrindabs'
+        DOCKER_CREDENTIALS_ID = 'docker-cred'
     }
 
     stages {
@@ -17,7 +17,7 @@ pipeline {
             steps {
                 script {
                     def commitHash = bat(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-                    env.VERSION = commitHash.replaceAll("\\r", "") // 🧼 remove carriage return for Windows
+                    env.VERSION = commitHash.replaceAll("\\r", "")
                     echo "🔖 Using version: ${env.VERSION}"
                 }
             }
@@ -45,15 +45,13 @@ pipeline {
                     for (service in services) {
                         dir(service) {
                             echo "📦 Building and pushing ${service}..."
-                            try {
-                                bat "docker build -t ${DOCKERHUB_USER}/${service}:${env.VERSION} ."
-                                bat "docker tag ${DOCKERHUB_USER}/${service}:${env.VERSION} ${DOCKERHUB_USER}/${service}:latest"
-                                bat "docker push ${DOCKERHUB_USER}/${service}:${env.VERSION}"
-                                bat "docker push ${DOCKERHUB_USER}/${service}:latest"
-                            } catch (err) {
-                                echo "❌ Failed to build/push ${service}: ${err}"
-                                error("Stopping pipeline due to failure in ${service}")
-                            }
+                            bat """
+                                set VERSION=${env.VERSION}
+                                docker build -t ${DOCKERHUB_USER}/${service}:%VERSION% .
+                                docker tag ${DOCKERHUB_USER}/${service}:%VERSION% ${DOCKERHUB_USER}/${service}:latest
+                                docker push ${DOCKERHUB_USER}/${service}:%VERSION%
+                                docker push ${DOCKERHUB_USER}/${service}:latest
+                            """
                         }
                     }
                 }
@@ -63,7 +61,7 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 echo '🚀 Deploying to Kubernetes...'
-                // Add your kubectl apply -f commands here if needed
+                // bat "kubectl apply -f k8s/"
             }
         }
     }
