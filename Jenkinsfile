@@ -5,7 +5,6 @@ pipeline {
         stage('Set Version') {
             steps {
                 script {
-                    // Try to get short git commit hash, else fallback to datetime string
                     def gitHashStatus = bat(script: 'git rev-parse --short HEAD', returnStatus: true)
                     def gitHash = null
                     if (gitHashStatus == 0) {
@@ -15,7 +14,6 @@ pipeline {
                     if (gitHash) {
                         env.VERSION = gitHash
                     } else {
-                        // Windows date format: YYYYMMDDHHMMSS with powershell
                         env.VERSION = bat(
                             script: 'powershell -command "(Get-Date).ToString(\'yyyyMMddHHmmss\')"',
                             returnStdout: true
@@ -36,7 +34,6 @@ pipeline {
                     for (service in services) {
                         dir(service) {
                             echo "Building ${service}..."
-                            // Use Groovy interpolation for env variables here:
                             bat "docker build -t ${env.DOCKER_REPO}/${service}:${env.VERSION} ."
                             bat "docker tag ${env.DOCKER_REPO}/${service}:${env.VERSION} ${env.DOCKER_REPO}/${service}:latest"
                             bat "docker push ${env.DOCKER_REPO}/${service}:${env.VERSION}"
